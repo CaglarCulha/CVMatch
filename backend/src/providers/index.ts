@@ -1,4 +1,5 @@
 export { AnalysisOrchestrator } from "./analysisOrchestrator.js";
+export { GeminiProvider } from "./geminiProvider.js";
 export { MockProvider } from "./mockProvider.js";
 export { OpenAIProvider } from "./openAIProvider.js";
 export { PromptBuilder } from "./promptBuilder.js";

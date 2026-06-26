@@ -2,7 +2,7 @@
 
 Node.js + Express + TypeScript backend foundation for CVMatch career analysis.
 
-The backend exposes `POST /analyze` and returns JSON matching the Flutter `CvAnalysisResult` model. It uses an extensible provider architecture with `MockProvider` for safe local runs and `OpenAIProvider` for real AI analysis when explicitly enabled.
+The backend exposes `POST /analyze` and returns JSON matching the Flutter `CvAnalysisResult` model. It uses an extensible provider architecture with `MockProvider` for safe local runs, `OpenAIProvider` for OpenAI analysis, and `GeminiProvider` for Gemini analysis when explicitly enabled.
 
 ## Requirements
 
@@ -26,6 +26,9 @@ AI_PROVIDER=openai
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4.1-mini
 OPENAI_REQUEST_TIMEOUT_MS=45000
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
+GEMINI_REQUEST_TIMEOUT_MS=45000
 ```
 
 Do not commit `.env` or any real API key.
@@ -45,6 +48,16 @@ OPENAI_MODEL=gpt-4.1-mini
 ```
 
 Fill `OPENAI_API_KEY` only in your local `.env` or deployment secret manager.
+
+For real Gemini analysis, use:
+
+```sh
+AI_PROVIDER=gemini
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+Fill `GEMINI_API_KEY` only in your local `.env` or deployment secret manager.
 
 ## Run Locally
 
@@ -105,6 +118,7 @@ Current providers:
 
 - `MockProvider`: default deterministic provider for local development and tests.
 - `OpenAIProvider`: official OpenAI Node SDK provider, selected only when `AI_PROVIDER=openai`.
+- `GeminiProvider`: official Google Gen AI SDK provider, selected only when `AI_PROVIDER=gemini`.
 
 OpenAI provider behavior:
 
@@ -115,7 +129,16 @@ OpenAI provider behavior:
 - Returns raw provider JSON through `ResponseParser` and `ResultValidator`.
 - Maps missing API key, timeout, malformed response, invalid JSON, and OpenAI API errors to safe API errors.
 
-To add Anthropic, Gemini, Ollama, or another provider later:
+Gemini provider behavior:
+
+- Reads `GEMINI_API_KEY` from backend environment variables only.
+- Uses `GEMINI_MODEL`, defaulting to `gemini-2.5-flash`.
+- Applies `GEMINI_REQUEST_TIMEOUT_MS`, defaulting to 45 seconds.
+- Requests structured JSON output with the same `CvAnalysisResult` JSON schema.
+- Returns raw provider JSON through `ResponseParser` and `ResultValidator`.
+- Maps missing API key, timeout, malformed response, invalid JSON, and Gemini API errors to safe API errors.
+
+To add Anthropic, Ollama, or another provider later:
 
 1. Implement `AIProvider`.
 2. Return strict JSON matching `CvAnalysisResult`.
@@ -180,9 +203,10 @@ Validation errors return:
 
 ## Security Notes
 
-- `OPENAI_API_KEY` is read only by the backend environment.
-- The API never returns or logs the OpenAI key.
+- `OPENAI_API_KEY` and `GEMINI_API_KEY` are read only by the backend environment.
+- The API never returns or logs provider keys.
 - `OpenAIProvider` calls OpenAI only when `AI_PROVIDER=openai`.
+- `GeminiProvider` calls Gemini only when `AI_PROVIDER=gemini`.
 - Request validation errors do not echo `cvText` or `jobDescription`.
 - The backend does not persist CV text, job descriptions, or analysis results.
 - Keep AI-provider integration server-side only.

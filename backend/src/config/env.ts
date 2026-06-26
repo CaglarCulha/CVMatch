@@ -57,4 +57,11 @@ export const env = Object.freeze({
     45_000,
     "OPENAI_REQUEST_TIMEOUT_MS",
   ),
+  geminiApiKey: process.env.GEMINI_API_KEY?.trim() || undefined,
+  geminiModel: process.env.GEMINI_MODEL?.trim() || "gemini-2.5-flash",
+  geminiTimeoutMs: parsePositiveInteger(
+    process.env.GEMINI_REQUEST_TIMEOUT_MS,
+    45_000,
+    "GEMINI_REQUEST_TIMEOUT_MS",
+  ),
 });

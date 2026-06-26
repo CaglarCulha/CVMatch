@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { HttpError } from "../src/errors/httpError.js";
 import {
   AnalysisOrchestrator,
+  GeminiProvider,
   MockProvider,
   OpenAIProvider,
   PromptBuilder,
@@ -11,6 +12,7 @@ import {
   ResultValidator,
 } from "../src/providers/index.js";
 import type { ProviderResponse } from "../src/providers/index.js";
+import type { GeminiClient } from "../src/providers/geminiProvider.js";
 import type { OpenAIChatClient } from "../src/providers/openAIProvider.js";
 
 const request = {
@@ -34,6 +36,10 @@ describe("provider architecture", () => {
     expect(response.content).toContain("matchScore");
   });
 
+  it("uses GeminiProvider when selected", () => {
+    expect(ProviderFactory.create("gemini")).toBeInstanceOf(GeminiProvider);
+  });
+
   it("keeps OpenAIProvider disabled when API key is missing", async () => {
     const provider = new OpenAIProvider({ apiKey: "", model: "gpt-4.1-mini" });
     const prompt = new PromptBuilder().build(request);
@@ -42,6 +48,18 @@ describe("provider architecture", () => {
     await expect(provider.generateAnalysis(prompt)).rejects.toMatchObject({
       statusCode: 503,
       message: "OpenAI provider is not configured.",
+      name: "CareerAnalysisException",
+    });
+  });
+
+  it("keeps GeminiProvider disabled when API key is missing", async () => {
+    const provider = new GeminiProvider({ apiKey: "", model: "gemini-2.5-flash" });
+    const prompt = new PromptBuilder().build(request);
+
+    expect(provider).toBeInstanceOf(GeminiProvider);
+    await expect(provider.generateAnalysis(prompt)).rejects.toMatchObject({
+      statusCode: 503,
+      message: "Gemini provider is not configured.",
       name: "CareerAnalysisException",
     });
   });
@@ -223,6 +241,147 @@ describe("provider architecture", () => {
     });
   });
 
+  it("sends structured JSON schema requests through GeminiProvider", async () => {
+    const captured: {
+      body?: unknown;
+    } = {};
+    const client: GeminiClient = {
+      models: {
+        generateContent: async (body) => {
+          captured.body = body;
+
+          return geminiResponse(validResult());
+        },
+      },
+    };
+    const provider = new GeminiProvider({
+      apiKey: "test-key",
+      model: "gemini-2.5-flash",
+      timeoutMs: 1234,
+      retryDelayMs: 0,
+      client,
+    });
+    const prompt = new PromptBuilder().build(request);
+    const response = await provider.generateAnalysis(prompt);
+
+    expect(response.provider).toBe("gemini");
+    expect(response.model).toBe("gemini-2.5-flash");
+    expect(JSON.parse(response.content)).toMatchObject({
+      matchScore: 78,
+      atsScore: 74,
+      keywordCoverage: 68,
+    });
+    expect(captured.body).toMatchObject({
+      model: "gemini-2.5-flash",
+      contents: expect.stringContaining("Job description:"),
+      config: {
+        systemInstruction: expect.stringContaining("privacy-first career analysis engine"),
+        temperature: 0.2,
+        responseMimeType: "application/json",
+        responseJsonSchema: expect.objectContaining({
+          required: expect.arrayContaining([
+            "matchScore",
+            "atsScore",
+            "keywordCoverage",
+            "missingKeywords",
+            "strengths",
+            "weaknesses",
+            "improvements",
+            "rewrittenSummary",
+          ]),
+        }),
+        httpOptions: {
+          timeout: 1234,
+        },
+      },
+    });
+  });
+
+  it("retries transient Gemini failures", async () => {
+    let calls = 0;
+    const client: GeminiClient = {
+      models: {
+        generateContent: async () => {
+          calls += 1;
+          if (calls === 1) {
+            throw {
+              name: "ServiceUnavailable",
+              message: "Temporary provider failure",
+              status: 503,
+            };
+          }
+
+          return geminiResponse(validResult());
+        },
+      },
+    };
+    const provider = new GeminiProvider({
+      apiKey: "test-key",
+      client,
+      maxRetries: 1,
+      retryDelayMs: 0,
+    });
+
+    const response = await provider.generateAnalysis(new PromptBuilder().build(request));
+
+    expect(calls).toBe(2);
+    expect(JSON.parse(response.content).matchScore).toBe(78);
+  });
+
+  it("maps Gemini timeout errors safely", async () => {
+    const provider = new GeminiProvider({
+      apiKey: "test-key",
+      client: mockRejectingGeminiClient({
+        name: "TimeoutError",
+        message: "Request timeout",
+      }),
+      maxRetries: 0,
+    });
+
+    await expect(provider.generateAnalysis(new PromptBuilder().build(request))).rejects.toMatchObject({
+      statusCode: 504,
+      message: "Gemini provider request timed out.",
+      name: "CareerAnalysisException",
+    });
+  });
+
+  it("rejects malformed Gemini responses", async () => {
+    const provider = new GeminiProvider({
+      apiKey: "test-key",
+      client: {
+        models: {
+          generateContent: async () => ({}),
+        },
+      },
+      maxRetries: 0,
+    });
+
+    await expect(provider.generateAnalysis(new PromptBuilder().build(request))).rejects.toMatchObject({
+      statusCode: 502,
+      message: "Gemini provider returned a malformed response.",
+      name: "CareerAnalysisException",
+    });
+  });
+
+  it("keeps Gemini JSON inside the parser and validator pipeline", async () => {
+    const orchestrator = new AnalysisOrchestrator({
+      provider: new GeminiProvider({
+        apiKey: "test-key",
+        client: {
+          models: {
+            generateContent: async () => geminiResponse("not-json"),
+          },
+        },
+        maxRetries: 0,
+      }),
+    });
+
+    await expect(orchestrator.analyze(request)).rejects.toMatchObject({
+      statusCode: 502,
+      message: "Analysis provider returned invalid JSON.",
+    });
+  });
+
   it("parses fenced provider JSON", () => {
     const response: ProviderResponse = {
       provider: "mock",
@@ -250,6 +409,24 @@ describe("provider architecture", () => {
             completions: {
               create: async () => chatResponse(validResult()),
             },
+          },
+        },
+      }),
+    });
+
+    await expect(orchestrator.analyze(request)).resolves.toMatchObject({
+      matchScore: 78,
+      keywordCoverage: 68,
+    });
+  });
+
+  it("keeps the Gemini provider inside the orchestrator pipeline", async () => {
+    const orchestrator = new AnalysisOrchestrator({
+      provider: new GeminiProvider({
+        apiKey: "test-key",
+        client: {
+          models: {
+            generateContent: async () => geminiResponse(validResult()),
           },
         },
       }),
@@ -296,6 +473,18 @@ function chatResponse(content: unknown) {
   };
 }
 
+function geminiResponse(content: unknown) {
+  return {
+    modelVersion: "gemini-2.5-flash",
+    text: typeof content === "string" ? content : JSON.stringify(content),
+    candidates: [
+      {
+        finishReason: "STOP",
+      },
+    ],
+  };
+}
+
 function mockRejectingClient(error: Error | object): OpenAIChatClient {
   return {
     chat: {
@@ -303,6 +492,16 @@ function mockRejectingClient(error: Error | object): OpenAIChatClient {
         create: async () => {
           throw error;
         },
+      },
+    },
+  };
+}
+
+function mockRejectingGeminiClient(error: Error | object): GeminiClient {
+  return {
+    models: {
+      generateContent: async () => {
+        throw error;
       },
     },
   };

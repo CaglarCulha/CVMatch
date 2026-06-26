@@ -1,6 +1,6 @@
 import type { AnalyzeRequest } from "../types/analysis.js";
 
-export type AnalysisProviderName = "mock" | "openai" | (string & {});
+export type AnalysisProviderName = "mock" | "openai" | "gemini" | (string & {});
 
 export type AnalysisPrompt = {
   system: string;
