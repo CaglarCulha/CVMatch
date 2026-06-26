@@ -1,11 +1,11 @@
 {
-    "name": "cvmatch",
-    "short_name": "cvmatch",
+    "name": "CVMatch",
+    "short_name": "CVMatch",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F7F8FA",
+    "theme_color": "#0F766E",
+    "description": "A modern AI career assistant MVP.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

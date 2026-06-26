@@ -1,6 +1,42 @@
-# cvmatch
+# CVMatch
 
-A new Flutter project.
+A modern AI career assistant MVP built with Flutter and Material 3.
+
+## AI Analysis Backend
+
+CVMatch is prepared to call a career analysis backend, but it does not call
+OpenAI directly from Flutter and does not store API keys in the app.
+
+- If `CVMATCH_ANALYSIS_API_URL` is empty, the app uses `MockAnalysisService`.
+- If `CVMATCH_ANALYSIS_API_URL` is set, the app uses `ApiCareerAnalysisService`.
+- Configure the backend URL at runtime:
+
+```sh
+flutter run --dart-define=CVMATCH_ANALYSIS_API_URL=https://api.example.com/v1/career-analysis
+```
+
+The backend should accept a `POST` JSON body with:
+
+- `cvText`
+- `cvFileName`
+- `jobDescription`
+- `locale`
+- `targetRole` when available
+
+The backend response should match `CvAnalysisResult`:
+
+- `matchScore`
+- `atsScore`
+- `missingKeywords`
+- `strongPoints`
+- `weakPoints`
+- `suggestedImprovements`
+- `coverLetter`
+- `interviewQuestions`
+
+Keep OpenAI keys and provider logic on the backend only. Flutter should call
+your backend API, and the backend should handle authentication, rate limiting,
+AI provider calls, and response validation.
 
 ## Getting Started
 
