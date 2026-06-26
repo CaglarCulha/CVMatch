@@ -20,6 +20,9 @@ The current MVP includes:
 - Configurable backend analysis service through `CVMATCH_ANALYSIS_API_URL`.
 - Friendly loading, validation, and retry UI.
 - Unit and widget tests for extraction, service parsing, mock scoring, and the core user flow.
+- Node.js + Express + TypeScript backend foundation with `POST /analyze`.
+- Backend request and response validation matching `CvAnalysisResult`.
+- Extensible backend AI provider architecture with `MockProvider` as default and `OpenAIProvider` as a non-calling stub.
 
 ## Phase 1: Backend Analysis Service
 
@@ -42,6 +45,13 @@ Acceptance criteria:
 - OpenAI or other provider keys exist only on the backend.
 - Backend returns a complete `CvAnalysisResult`.
 - Client shows friendly retry UI for timeout, network error, invalid JSON, and backend error payloads.
+
+Completed foundation:
+
+- Local backend folder and Express server.
+- `POST /analyze` contract endpoint.
+- Server-side environment loading for `OPENAI_API_KEY`.
+- Provider orchestration, prompt building, response parsing, result validation, safe errors, and no persistence.
 
 ## Phase 2: Account And Session Model
 

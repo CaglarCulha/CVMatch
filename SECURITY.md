@@ -77,6 +77,20 @@ Any production backend used with CVMatch must:
 - Return structured JSON errors.
 - Avoid storing raw CV text unless encryption, retention, and deletion are implemented.
 
+The repository backend foundation in `backend/` currently:
+
+- Reads `OPENAI_API_KEY` from backend environment variables only.
+- Does not expose provider keys through API responses, health checks, logs, or Flutter config.
+- Does not persist CV text, job descriptions, or analysis results.
+- Validates request and response JSON with Zod.
+- Avoids echoing sensitive request content in validation errors.
+- Uses `MockProvider` when `AI_PROVIDER=mock`.
+- Uses `OpenAIProvider` only when `AI_PROVIDER=openai`.
+- Reads `OPENAI_API_KEY` from backend environment variables only.
+- Uses the official OpenAI Node SDK server-side.
+- Keeps OpenAI outputs inside the existing parser and validator pipeline.
+- Maps provider failures to safe errors without logging CV text, job descriptions, prompts, provider response bodies, or keys.
+
 ## AI Provider Safety
 
 The backend should:

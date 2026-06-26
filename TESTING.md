@@ -17,6 +17,16 @@ flutter run -d chrome
 flutter run -d chrome --dart-define=CVMATCH_ANALYSIS_API_URL=https://api.example.com/v1/career-analysis
 ```
 
+Run backend checks when Node.js is available:
+
+```sh
+cd backend
+npm install
+npm run typecheck
+npm test
+npm run build
+```
+
 ## Current Test Suite
 
 ### `test/widget_test.dart`
@@ -123,6 +133,9 @@ Backend contract tests should verify:
 - Invalid provider output handling.
 - Rate-limit and auth error payloads.
 - Redaction in backend logs.
+
+The repository backend includes `backend/test/analyze.test.ts` for the local `POST /analyze` contract and validation behavior.
+It also includes `backend/test/providerArchitecture.test.ts` for provider selection, OpenAI stub behavior, response parsing, and result validation.
 
 ## CI Expectations
 

@@ -6,6 +6,13 @@ This changelog follows the spirit of Keep a Changelog and uses the app version f
 
 ### Added
 
+- Node.js + Express + TypeScript backend foundation in `backend/`.
+- `POST /analyze` backend endpoint accepting CV text, CV file name, job description, locale, and target role.
+- Backend validation with Zod for analysis requests and `CvAnalysisResult` responses.
+- Extensible backend AI provider architecture with `AIProvider`, `MockProvider`, `OpenAIProvider`, `ProviderFactory`, `AnalysisOrchestrator`, `PromptBuilder`, `ResponseParser`, and `ResultValidator`.
+- Real `OpenAIProvider` implementation using the official OpenAI Node SDK, structured JSON output, timeout handling, safe error mapping, and mocked tests.
+- Backend `.env.example` with server-side `OPENAI_API_KEY` configuration.
+- Backend README with local setup and Flutter connection instructions.
 - Flutter Material 3 MVP for CVMatch.
 - Light and dark mode with blue/indigo SaaS visual direction.
 - Login, dashboard, upload CV, job description, analysis result, and paywall screens.

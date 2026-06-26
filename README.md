@@ -15,6 +15,23 @@ OpenAI directly from Flutter and does not store API keys in the app.
 flutter run --dart-define=CVMATCH_ANALYSIS_API_URL=https://api.example.com/v1/career-analysis
 ```
 
+For local backend development:
+
+```sh
+cd backend
+npm install
+cp .env.example .env
+npm run dev
+```
+
+Then connect Flutter to the local backend:
+
+```sh
+flutter run -d chrome --dart-define=CVMATCH_ANALYSIS_API_URL=http://localhost:3001/analyze
+```
+
+See `backend/README.md` for backend setup, validation, and API examples.
+
 The backend should accept a `POST` JSON body with:
 
 - `cvText`

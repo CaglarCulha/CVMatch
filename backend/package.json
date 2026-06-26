@@ -1,0 +1,35 @@
+{
+  "name": "@cvmatch/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend analysis API foundation for CVMatch.",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.19.2",
+    "helmet": "^7.1.0",
+    "openai": "^6.16.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.10",
+    "@types/supertest": "^6.0.2",
+    "supertest": "^7.0.0",
+    "tsx": "^4.16.2",
+    "typescript": "^5.5.3",
+    "vitest": "^4.1.9"
+  }
+}

@@ -18,6 +18,12 @@ Run with a backend:
 flutter run --dart-define=CVMATCH_ANALYSIS_API_URL=https://api.example.com/v1/career-analysis
 ```
 
+Run with the local repository backend:
+
+```sh
+flutter run -d chrome --dart-define=CVMATCH_ANALYSIS_API_URL=http://localhost:3001/analyze
+```
+
 Run without a backend:
 
 ```sh
@@ -37,6 +43,14 @@ Content-Type: application/json
 ```
 
 The client timeout is 45 seconds.
+
+The repository backend exposes this route locally:
+
+```http
+POST http://localhost:3001/analyze
+Accept: application/json
+Content-Type: application/json
+```
 
 ## Request Body
 
@@ -153,6 +167,8 @@ The backend must:
 - Return JSON only.
 - Configure CORS for trusted Flutter Web origins.
 - Use TLS in production.
+
+The current repository backend validates requests and returns contract-compatible JSON through `AnalysisOrchestrator`. `MockProvider` is used when `AI_PROVIDER=mock`. `OpenAIProvider` is used only when `AI_PROVIDER=openai`, reads its key from backend environment variables, and keeps output validation inside `ResponseParser` and `ResultValidator`.
 
 ## Client Responsibilities
 

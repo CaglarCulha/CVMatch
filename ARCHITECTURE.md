@@ -6,6 +6,8 @@ CVMatch is a Flutter application organized by feature with clear presentation, d
 
 ## Runtime Stack
 
+### Flutter Client
+
 - Flutter with Material 3.
 - Dart SDK constraint: `^3.11.5`.
 - `file_picker` for PDF selection.
@@ -14,6 +16,16 @@ CVMatch is a Flutter application organized by feature with clear presentation, d
 - `http` for backend analysis requests.
 - `flutter_lints` for static linting.
 - `flutter_test` for unit and widget tests.
+
+### Backend API
+
+- Node.js 20.11 or newer.
+- Express for HTTP routing.
+- TypeScript for strict backend implementation.
+- Zod for request and response validation.
+- Helmet for default HTTP security headers.
+- CORS configured by environment for Flutter Web origins.
+- dotenv for local environment loading.
 
 ## Application Entry
 
@@ -75,6 +87,23 @@ lib/
         presentation/
     shared/
       widgets/
+backend/
+  .env.example
+  package.json
+  tsconfig.json
+  src/
+    app.ts
+    server.ts
+    config/
+    errors/
+    middleware/
+    providers/
+      templates/
+    routes/
+    schemas/
+    types/
+    utils/
+  test/
 ```
 
 ## State Management
@@ -159,6 +188,45 @@ Sends extracted CV text and job description to the configured backend API. It ha
 
 See `API_SPEC.md` for the backend contract.
 
+## Backend API Architecture
+
+The backend foundation lives in `backend/` and exposes:
+
+- `GET /health`
+- `POST /analyze`
+
+Backend request flow:
+
+1. `server.ts` starts the Express app.
+2. `app.ts` applies Helmet, CORS, JSON body limits, routes, not-found handling, and error handling.
+3. `routes/analyze.ts` validates the request body with `analyzeRequestSchema`.
+4. The route calls `AnalysisOrchestrator`.
+5. `PromptBuilder` creates provider prompts from templates.
+6. `ProviderFactory` selects an `AIProvider`; `MockProvider` is the default.
+7. The provider returns raw JSON text.
+8. `ResponseParser` parses provider text into JSON.
+9. `ResultValidator` validates the JSON against `cvAnalysisResultSchema`.
+10. The backend returns JSON matching Flutter `CvAnalysisResult`.
+
+## AI Provider Architecture
+
+The backend provider layer lives in `backend/src/providers/`.
+
+Key components:
+
+- `AIProvider`: provider interface for OpenAI, Anthropic, Gemini, Ollama, or local providers.
+- `MockProvider`: deterministic default provider for local development and tests.
+- `OpenAIProvider`: official OpenAI Node SDK provider selected only when `AI_PROVIDER=openai`.
+- `ProviderFactory`: selects the provider from backend configuration.
+- `AnalysisOrchestrator`: business-flow coordinator used by the route.
+- `PromptBuilder`: builds prompts using templates from `providers/templates/`.
+- `ResponseParser`: parses strict JSON from provider responses, including fenced JSON.
+- `ResultValidator`: validates parsed provider JSON against `CvAnalysisResult`.
+
+Adding a provider should not require route or orchestration changes. Implement `AIProvider`, add the provider to `ProviderFactory`, keep credentials server-side, and add provider-specific tests.
+
+`OpenAIProvider` reads `OPENAI_API_KEY` and `OPENAI_MODEL` from backend environment variables, uses structured JSON output, applies a backend request timeout, and sends provider output through the existing `ResponseParser` and `ResultValidator` pipeline. The default model is `gpt-4.1-mini`.
+
 ## Configuration
 
 Configuration is centralized in `lib/src/core/config/app_config.dart`.
@@ -173,6 +241,12 @@ Example:
 
 ```sh
 flutter run --dart-define=CVMATCH_ANALYSIS_API_URL=https://api.example.com/v1/career-analysis
+```
+
+Local backend example:
+
+```sh
+flutter run -d chrome --dart-define=CVMATCH_ANALYSIS_API_URL=http://localhost:3001/analyze
 ```
 
 No API keys or provider secrets may be configured in the Flutter client.

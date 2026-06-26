@@ -21,6 +21,16 @@ flutter analyze
 flutter test
 ```
 
+Run these before handing off backend changes when Node.js is available:
+
+```sh
+cd backend
+npm install
+npm run typecheck
+npm test
+npm run build
+```
+
 For local web verification:
 
 ```sh
@@ -40,6 +50,7 @@ flutter run -d chrome --dart-define=CVMATCH_ANALYSIS_API_URL=https://api.example
 - `lib/src/features/*/data/` contains concrete service implementations.
 - `lib/src/shared/widgets/` contains reusable UI primitives.
 - `test/` contains unit and widget tests.
+- `backend/` contains the Node.js + Express + TypeScript backend analysis API.
 
 ## Architecture Rules
 
@@ -52,6 +63,7 @@ flutter run -d chrome --dart-define=CVMATCH_ANALYSIS_API_URL=https://api.example
 - Keep file paths, data URIs, raw PDF bytes, and raw extracted CV text out of normal UI.
 - Use `CVMatchState` for current app-wide in-memory state until a documented state-management migration is accepted.
 - Do not introduce Firebase, RevenueCat, OpenAI SDKs, analytics SDKs, or persistent storage without updating `ARCHITECTURE.md`, `SECURITY.md`, and `DATABASE.md`.
+- Keep backend provider integrations behind service interfaces and keep provider keys in backend environment variables only.
 
 ## UI Rules
 
