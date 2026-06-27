@@ -50,6 +50,38 @@ export const analyzeRequestSchema = z.object({
   targetRole: optionalTrimmedString(120),
 });
 
+export const rewriteCvRequestSchema = z
+  .object({
+    cvText: z
+      .string({
+        required_error: "cvText is required.",
+        invalid_type_error: "cvText must be a string.",
+      })
+      .trim()
+      .min(40, "cvText must contain readable CV text.")
+      .max(120_000, "cvText is too large for rewriting."),
+    jobDescription: z
+      .string({
+        required_error: "jobDescription is required.",
+        invalid_type_error: "jobDescription must be a string.",
+      })
+      .trim()
+      .min(100, "jobDescription must be at least 100 characters.")
+      .max(60_000, "jobDescription is too large for rewriting."),
+    targetRole: optionalTrimmedString(120),
+    locale: z
+      .string({
+        invalid_type_error: "locale must be a string.",
+      })
+      .trim()
+      .min(2)
+      .max(35)
+      .regex(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/, "locale must be a valid language tag.")
+      .optional()
+      .default("en"),
+  })
+  .strict();
+
 export const cvAnalysisResultSchema = z.object({
   matchScore: z.number().int().min(0).max(100),
   atsScore: z.number().int().min(0).max(100),
@@ -71,4 +103,15 @@ export const cvAnalysisResultSchema = z.object({
   interviewQuestions: z.array(z.string().min(1)).min(1).max(20),
 });
 
+export const cvRewriteResultSchema = z
+  .object({
+    rewrittenSummary: z.string().min(1).max(2_000),
+    rewrittenExperienceBullets: z.array(z.string().min(1).max(600)).min(1).max(12),
+    rewrittenSkills: z.array(z.string().min(1).max(120)).min(1).max(40),
+    improvementNotes: z.array(z.string().min(1).max(800)).min(1).max(12),
+    warnings: z.array(z.string().min(1).max(800)).min(1).max(12),
+  })
+  .strict();
+
 export type ParsedAnalyzeRequest = z.infer<typeof analyzeRequestSchema>;
+export type ParsedRewriteCvRequest = z.infer<typeof rewriteCvRequestSchema>;

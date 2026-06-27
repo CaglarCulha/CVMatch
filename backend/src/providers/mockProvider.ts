@@ -1,6 +1,12 @@
 import type { AnalyzeRequest, CvAnalysisResult } from "../types/analysis.js";
+import type { CvRewriteRequest, CvRewriteResult } from "../types/rewrite.js";
 import { clamp, normalizeText, toTitleCase, unique } from "../utils/text.js";
-import type { AIProvider, AnalysisPrompt, ProviderResponse } from "./provider.js";
+import type {
+  AIProvider,
+  AnalysisPrompt,
+  CvRewritePrompt,
+  ProviderResponse,
+} from "./provider.js";
 
 type KeywordGroup = {
   label: string;
@@ -63,6 +69,16 @@ export class MockProvider implements AIProvider {
     return {
       provider: this.name,
       model: "mock-career-analysis-v1",
+      content: JSON.stringify(result),
+    };
+  }
+
+  async generateCvRewrite(prompt: CvRewritePrompt): Promise<ProviderResponse> {
+    const result = buildMockRewriteResult(prompt.request);
+
+    return {
+      provider: this.name,
+      model: "mock-cv-rewrite-v1",
       content: JSON.stringify(result),
     };
   }
@@ -131,6 +147,26 @@ function buildMockResult(request: AnalyzeRequest): CvAnalysisResult {
   };
 }
 
+function buildMockRewriteResult(request: CvRewriteRequest): CvRewriteResult {
+  const cvText = normalizeText(request.cvText);
+  const jobDescription = normalizeText(request.jobDescription);
+  const cvKeywords = labelsIn(cvText);
+  const jobKeywords = labelsIn(jobDescription);
+  const overlap = jobKeywords.filter((keyword) => cvKeywords.includes(keyword));
+  const missingKeywords = missingKeywordList(jobKeywords, cvKeywords, jobDescription, cvText);
+  const roleLabel = request.targetRole?.trim() || inferRole(jobDescription);
+  const supportedSkills = supportedRewriteSkills(overlap, cvKeywords, cvText);
+  const hasMetrics = containsMetrics(request.cvText);
+
+  return {
+    rewrittenSummary: rewriteSummary(roleLabel, supportedSkills, missingKeywords, hasMetrics),
+    rewrittenExperienceBullets: rewriteExperienceBullets(roleLabel, supportedSkills, hasMetrics),
+    rewrittenSkills: supportedSkills,
+    improvementNotes: rewriteImprovementNotes(roleLabel, missingKeywords, hasMetrics),
+    warnings: rewriteWarnings(missingKeywords, hasMetrics),
+  };
+}
+
 function labelsIn(text: string): string[] {
   return keywordCatalog
     .filter((group) => group.terms.some((term) => text.includes(term)))
@@ -196,6 +232,25 @@ function importantTerms(text: string): string[] {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
     .map(([word]) => word);
+}
+
+function supportedRewriteSkills(
+  overlap: string[],
+  cvKeywords: string[],
+  cvText: string,
+): string[] {
+  const inferredCvTerms = importantTerms(cvText).map(toTitleCase);
+  const skills = unique([...overlap, ...cvKeywords.slice(0, 8), ...inferredCvTerms]).filter(
+    (skill) => skill.length > 2,
+  );
+
+  return skills.length > 0 ? skills.slice(0, 12) : ["CV-supported transferable experience"];
+}
+
+function containsMetrics(text: string): boolean {
+  return /\b\d+([.,]\d+)?\s*(%|percent|k|m|million|billion|users|customers|revenue|quota|hours|days|weeks|months|years)\b/i.test(
+    text,
+  );
 }
 
 function roleSignal(targetRole: string | undefined, cvText: string, jobDescription: string): number {
@@ -347,6 +402,72 @@ function topThree(items: string[]): string[] {
   }
 
   return uniqueItems;
+}
+
+function rewriteSummary(
+  roleLabel: string,
+  supportedSkills: string[],
+  missingKeywords: string[],
+  hasMetrics: boolean,
+): string {
+  const evidence = supportedSkills.slice(0, 3).join(", ");
+  const metricPhrase = hasMetrics
+    ? "with measurable outcomes already present in the CV"
+    : "with placeholders for measurable outcomes that must be filled truthfully";
+  const gapPhrase =
+    missingKeywords.length > 0
+      ? ` Avoid claiming unsupported requirements such as ${missingKeywords.slice(0, 2).join(" or ")} unless they are true.`
+      : "";
+
+  return `${roleLabel} candidate with CV-supported experience in ${evidence}, positioned for the target job ${metricPhrase}.${gapPhrase}`;
+}
+
+function rewriteExperienceBullets(
+  roleLabel: string,
+  supportedSkills: string[],
+  hasMetrics: boolean,
+): string[] {
+  const metricPlaceholder = hasMetrics ? "[insert existing verified metric]" : "[insert measurable result]";
+  const primarySkills = supportedSkills.slice(0, 4);
+
+  return primarySkills.map(
+    (skill) =>
+      `Applied ${skill} in CV-supported work relevant to the ${roleLabel}; clarify scope, action, and outcome with ${metricPlaceholder}.`,
+  );
+}
+
+function rewriteImprovementNotes(
+  roleLabel: string,
+  missingKeywords: string[],
+  hasMetrics: boolean,
+): string[] {
+  return [
+    `Rewrite the summary for the ${roleLabel} using only the strongest CV-supported evidence and job language that is truthful.`,
+    hasMetrics
+      ? "Move verified metrics into the most relevant experience bullets so recruiters can see proof quickly."
+      : "Add measurable results where possible using placeholders such as [insert measurable result] until the candidate supplies accurate numbers.",
+    missingKeywords.length > 0
+      ? `Do not add unsupported job requirements as skills; if truthful, add evidence for ${missingKeywords.slice(0, 3).join(", ")} in Experience or Skills.`
+      : "Keep skills concise and aligned with the job while avoiding keyword stuffing.",
+  ];
+}
+
+function rewriteWarnings(missingKeywords: string[], hasMetrics: boolean): string[] {
+  const warnings = [
+    "Mock rewrite uses extracted CV text only; the candidate must verify every line before applying.",
+  ];
+
+  if (!hasMetrics) {
+    warnings.push("No clear measurable results were detected, so metric placeholders must be replaced with truthful values.");
+  }
+
+  if (missingKeywords.length > 0) {
+    warnings.push(
+      `The job appears to require unsupported or under-evidenced items: ${missingKeywords.slice(0, 5).join(", ")}.`,
+    );
+  }
+
+  return warnings;
 }
 
 function coverLetter(

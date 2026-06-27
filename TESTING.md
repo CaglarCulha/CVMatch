@@ -139,7 +139,8 @@ Backend contract tests should verify:
 - Redaction in backend logs.
 
 The repository backend includes `backend/test/analyze.test.ts` for the local `POST /analyze` contract and validation behavior.
-It also includes `backend/test/providerArchitecture.test.ts` for provider selection, OpenAI and Gemini stub behavior, response parsing, result validation, strict mock scoring, prompt-injection boundaries, no-hallucination checks, and Flutter response compatibility.
+It includes `backend/test/rewriteCv.test.ts` for the local `POST /rewrite-cv` contract, validation behavior, CORS behavior, and safe error responses.
+It also includes `backend/test/providerArchitecture.test.ts` for provider selection, OpenAI and Gemini stub behavior, response parsing, result validation, strict mock scoring, CV rewrite orchestration, prompt-injection boundaries, no-hallucination checks, and Flutter response compatibility.
 
 ## CI Expectations
 

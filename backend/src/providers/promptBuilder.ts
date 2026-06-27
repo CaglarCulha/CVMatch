@@ -1,7 +1,10 @@
 import type { AnalyzeRequest } from "../types/analysis.js";
-import type { AnalysisPrompt } from "./provider.js";
+import type { CvRewriteRequest } from "../types/rewrite.js";
+import type { AnalysisPrompt, CvRewritePrompt } from "./provider.js";
 import { analysisSystemTemplate } from "./templates/analysisSystemTemplate.js";
 import { analysisUserTemplate } from "./templates/analysisUserTemplate.js";
+import { rewriteSystemTemplate } from "./templates/rewriteSystemTemplate.js";
+import { rewriteUserTemplate } from "./templates/rewriteUserTemplate.js";
 
 type TemplateVariables = Record<string, string>;
 
@@ -18,6 +21,20 @@ export class PromptBuilder {
       }),
       request,
       responseFormat: "CvAnalysisResultJson",
+    };
+  }
+
+  buildCvRewrite(request: CvRewriteRequest): CvRewritePrompt {
+    return {
+      system: rewriteSystemTemplate,
+      user: applyTemplate(rewriteUserTemplate, {
+        LOCALE: request.locale,
+        TARGET_ROLE: request.targetRole ?? "Not provided",
+        CV_TEXT: request.cvText,
+        JOB_DESCRIPTION: request.jobDescription,
+      }),
+      request,
+      responseFormat: "CvRewriteResultJson",
     };
   }
 }

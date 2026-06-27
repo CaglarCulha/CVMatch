@@ -1,8 +1,8 @@
 # CVMatch Backend
 
-Node.js + Express + TypeScript backend foundation for CVMatch career analysis.
+Node.js + Express + TypeScript backend foundation for CVMatch career analysis and CV rewriting.
 
-The backend exposes `POST /analyze` and returns JSON matching the Flutter `CvAnalysisResult` model. It uses an extensible provider architecture with `MockProvider` for safe local runs, `OpenAIProvider` for OpenAI analysis, and `GeminiProvider` for Gemini analysis when explicitly enabled.
+The backend exposes `POST /analyze` and `POST /rewrite-cv`. Analysis returns JSON matching the Flutter `CvAnalysisResult` model. CV rewrite returns structured JSON for a truthful job-tailored summary, bullets, skills, notes, and warnings. It uses an extensible provider architecture with `MockProvider` for safe local runs, `OpenAIProvider` for OpenAI analysis, and `GeminiProvider` for Gemini analysis and rewrite when explicitly enabled.
 
 ## Requirements
 
@@ -92,6 +92,20 @@ curl -X POST "http://localhost:3001/analyze" \
   }'
 ```
 
+CV rewrite request:
+
+```sh
+curl -X POST "http://localhost:3001/rewrite-cv" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cvText": "Professional summary experience skills education projects. Product discovery roadmap ownership AI workflows prompt testing launch planning.",
+    "jobDescription": "We are hiring an AI product manager to own roadmap strategy, customer discovery, prompt testing, stakeholder leadership, launch planning, activation metrics, and experimentation for AI assistant workflows.",
+    "locale": "en-US",
+    "targetRole": "AI Product Manager"
+  }'
+```
+
 ## Validate
 
 ```sh
@@ -112,6 +126,14 @@ POST /analyze
   -> ResponseParser
   -> ResultValidator
   -> CvAnalysisResult JSON
+
+POST /rewrite-cv
+  -> CvRewriteOrchestrator
+  -> PromptBuilder
+  -> AIProvider
+  -> ResponseParser
+  -> CvRewriteValidator
+  -> CvRewriteResult JSON
 ```
 
 Current providers:
@@ -120,7 +142,9 @@ Current providers:
 - `OpenAIProvider`: official OpenAI Node SDK provider, selected only when `AI_PROVIDER=openai`.
 - `GeminiProvider`: official Google Gen AI SDK provider, selected only when `AI_PROVIDER=gemini`.
 
-All providers are expected to behave like strict recruiter-level analysis engines, not generic keyword checkers. Provider prompts require evidence-based scoring, separate match and ATS evaluation, role-specific missing keywords, actionable recommendations, and prompt-injection resistance. Mock mode mirrors the same product posture with deterministic keyword-overlap heuristics for safe local development.
+All analysis providers are expected to behave like strict recruiter-level analysis engines, not generic keyword checkers. Provider prompts require evidence-based scoring, separate match and ATS evaluation, role-specific missing keywords, actionable recommendations, and prompt-injection resistance. Mock mode mirrors the same product posture with deterministic keyword-overlap heuristics for safe local development.
+
+CV rewrite providers are expected to preserve truthful candidate background, avoid invented experience, avoid fabricated metrics, and use placeholders such as `[insert measurable result]` when measurable impact is missing. Unsupported job requirements are returned as warnings or improvement notes instead of being added as skills.
 
 OpenAI provider behavior:
 
@@ -130,6 +154,7 @@ OpenAI provider behavior:
 - Requests structured JSON output with the `CvAnalysisResult` JSON schema.
 - Returns raw provider JSON through `ResponseParser` and `ResultValidator`.
 - Maps missing API key, timeout, malformed response, invalid JSON, and OpenAI API errors to safe API errors.
+- Does not support `POST /rewrite-cv` yet; rewrite support is implemented first for Gemini and mock mode.
 
 Gemini provider behavior:
 
@@ -137,7 +162,8 @@ Gemini provider behavior:
 - Uses `GEMINI_MODEL`, defaulting to `gemini-2.5-flash`.
 - Applies `GEMINI_REQUEST_TIMEOUT_MS`, defaulting to 45 seconds.
 - Requests structured JSON output with the same `CvAnalysisResult` JSON schema.
-- Returns raw provider JSON through `ResponseParser` and `ResultValidator`.
+- Requests structured JSON output with the `CvRewriteResult` JSON schema for `POST /rewrite-cv`.
+- Returns raw provider JSON through `ResponseParser` and the appropriate result validator.
 - Maps missing API key, timeout, malformed response, invalid JSON, and Gemini API errors to safe API errors.
 
 To add Anthropic, Ollama, or another provider later:
@@ -171,6 +197,37 @@ Request body:
   "jobDescription": "Full job description text...",
   "locale": "en-US",
   "targetRole": "AI Product Manager"
+}
+```
+
+### `POST /rewrite-cv`
+
+Request body:
+
+```json
+{
+  "cvText": "Readable extracted CV text...",
+  "jobDescription": "Full job description text...",
+  "locale": "en-US",
+  "targetRole": "AI Product Manager"
+}
+```
+
+Successful response:
+
+```json
+{
+  "rewrittenSummary": "AI product manager with CV-supported roadmap ownership and prompt-testing experience. Add [insert measurable result] where verified.",
+  "rewrittenExperienceBullets": [
+    "Owned roadmap prioritization for AI workflow improvements; add [insert measurable result] to quantify impact."
+  ],
+  "rewrittenSkills": ["Roadmap ownership", "Prompt testing", "Launch planning"],
+  "improvementNotes": [
+    "Add verified activation or conversion metrics to the most relevant experience bullet."
+  ],
+  "warnings": [
+    "Metric placeholders must be replaced with truthful values before applying."
+  ]
 }
 ```
 
@@ -221,5 +278,6 @@ Validation errors return:
 - `GeminiProvider` calls Gemini only when `AI_PROVIDER=gemini`.
 - Request validation errors do not echo `cvText` or `jobDescription`.
 - The backend does not persist CV text, job descriptions, or analysis results.
+- The backend does not persist CV rewrite outputs.
 - Keep AI-provider integration server-side only.
-- Provider prompts delimit CV text and job descriptions as untrusted data and instruct models to ignore embedded instructions that attempt to override system rules, leak prompts, or force inflated scores.
+- Provider prompts delimit CV text and job descriptions as untrusted data and instruct models to ignore embedded instructions that attempt to override system rules, leak prompts, force inflated scores, or fabricate rewrite content.

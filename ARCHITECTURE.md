@@ -195,6 +195,7 @@ The backend foundation lives in `backend/` and exposes:
 
 - `GET /health`
 - `POST /analyze`
+- `POST /rewrite-cv`
 
 Backend request flow:
 
@@ -209,6 +210,17 @@ Backend request flow:
 9. `ResultValidator` validates the JSON against `cvAnalysisResultSchema`.
 10. The backend returns JSON matching Flutter `CvAnalysisResult`.
 
+CV rewrite request flow:
+
+1. `routes/rewriteCv.ts` validates the request body with `rewriteCvRequestSchema`.
+2. The route calls `CvRewriteOrchestrator`.
+3. `PromptBuilder.buildCvRewrite` creates guarded rewrite prompts from templates.
+4. `ProviderFactory` selects the configured `AIProvider`; `MockProvider` is the safe default and `GeminiProvider` is the first real rewrite provider.
+5. The provider returns raw JSON text matching `CvRewriteResult`.
+6. `ResponseParser` parses provider text into JSON.
+7. `CvRewriteValidator` validates the JSON against `cvRewriteResultSchema`.
+8. The backend returns structured CV rewrite JSON without persisting CV text or rewrite output.
+
 ## AI Provider Architecture
 
 The backend provider layer lives in `backend/src/providers/`.
@@ -221,9 +233,11 @@ Key components:
 - `GeminiProvider`: official Google Gen AI SDK provider selected only when `AI_PROVIDER=gemini`.
 - `ProviderFactory`: selects the provider from backend configuration.
 - `AnalysisOrchestrator`: business-flow coordinator used by the route.
+- `CvRewriteOrchestrator`: business-flow coordinator for CV rewrite requests.
 - `PromptBuilder`: builds prompts using templates from `providers/templates/`.
 - `ResponseParser`: parses strict JSON from provider responses, including fenced JSON.
 - `ResultValidator`: validates parsed provider JSON against `CvAnalysisResult`.
+- `CvRewriteValidator`: validates parsed provider JSON against `CvRewriteResult`.
 
 Adding a provider should not require route or orchestration changes. Implement `AIProvider`, add the provider to `ProviderFactory`, keep credentials server-side, and add provider-specific tests.
 
@@ -239,6 +253,14 @@ Provider prompts and schemas enforce recruiter-grade analysis quality across Ope
 - Strengths must be supported by CV evidence, weaknesses must explain missing proof, and improvements must state what to change, where to add it, why it matters, and example wording when possible.
 - Optional recruiter reasoning fields such as `mainReasonsForScore`, `confidenceLevel`, `recruiterVerdict`, `rejectionRisks`, and `fastestFixes` are backward-compatible additions to the backend response contract.
 - User-provided CV text and job descriptions are wrapped as untrusted content so provider prompts can explicitly ignore embedded prompt-injection attempts.
+
+CV rewrite prompts and schemas enforce truth-preserving rewrite behavior:
+
+- Rewrites must preserve the candidate's real background and use only evidence from the CV and job description.
+- Metrics, tools, platforms, employers, degrees, certifications, seniority, and ownership claims must not be invented.
+- Missing metrics use placeholders such as `[insert measurable result]` until the candidate supplies accurate values.
+- Unsupported job requirements are returned as warnings or improvement notes instead of being added as skills.
+- Gemini and mock providers currently support `POST /rewrite-cv`; OpenAI rewrite support remains intentionally disabled until separately implemented and tested.
 
 ## Configuration
 

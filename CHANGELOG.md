@@ -13,6 +13,7 @@ This changelog follows the spirit of Keep a Changelog and uses the app version f
 - Real `OpenAIProvider` implementation using the official OpenAI Node SDK, structured JSON output, timeout handling, safe error mapping, and mocked tests.
 - Real `GeminiProvider` implementation using the official Google Gen AI SDK, structured JSON output, timeout handling, safe error mapping, and mocked tests.
 - Recruiter-grade backend analysis prompts, structured schema fields, strict mock scoring, role-specific missing keyword extraction, actionable improvement guidance, and optional recruiter reasoning fields.
+- Backend `POST /rewrite-cv` endpoint with strict CV rewrite schemas, Gemini/mock provider support, truth-preserving prompts, placeholder metrics, warnings, and route/provider tests.
 - Backend `.env.example` with server-side `OPENAI_API_KEY` configuration.
 - Backend README with local setup and Flutter connection instructions.
 - Flutter Material 3 MVP for CVMatch.

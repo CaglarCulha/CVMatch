@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the contract between the Flutter client and the CVMatch career analysis backend. The backend is responsible for any AI-provider calls. The Flutter client must not call OpenAI or any other model provider directly.
+This document defines the contract between the Flutter client and the CVMatch career analysis backend. The backend is responsible for any AI-provider calls, including CV analysis and CV rewrite workflows. The Flutter client must not call OpenAI, Gemini, or any other model provider directly.
 
 ## Client Configuration
 
@@ -48,6 +48,14 @@ The repository backend exposes this route locally:
 
 ```http
 POST http://localhost:3001/analyze
+Accept: application/json
+Content-Type: application/json
+```
+
+The repository backend also exposes the CV rewrite route locally:
+
+```http
+POST http://localhost:3001/rewrite-cv
 Accept: application/json
 Content-Type: application/json
 ```
@@ -160,6 +168,70 @@ The backend may return additional backward-compatible fields for richer recruite
 | `rejectionRisks` | string[] | no | Top three reasons the application may be rejected. |
 | `fastestFixes` | string[] | no | Top three fastest truthful changes to improve fit. |
 
+## CV Rewrite Endpoint
+
+`POST /rewrite-cv` rewrites selected CV content for a specific job description. This endpoint is backend-only for now; no Flutter UI calls it yet.
+
+### CV Rewrite Request
+
+```json
+{
+  "cvText": "Readable extracted CV text...",
+  "jobDescription": "Full job description text...",
+  "targetRole": "AI Product Manager",
+  "locale": "en-US"
+}
+```
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `cvText` | string | yes | Normalized readable text extracted from the uploaded PDF. |
+| `jobDescription` | string | yes | User-provided job description. Backend requires at least 100 characters. |
+| `targetRole` | string | no | Role label used to tailor rewrite language. |
+| `locale` | string | no | Locale tag such as `en-US` or `tr-TR`; defaults to `en` when omitted. |
+
+Unknown fields are rejected. Validation errors must not echo `cvText` or `jobDescription`.
+
+### CV Rewrite Response
+
+Return `200 OK` with strict JSON:
+
+```json
+{
+  "rewrittenSummary": "AI product manager with CV-supported roadmap ownership, stakeholder leadership, and prompt-testing experience. Add [insert measurable result] where the candidate can verify impact.",
+  "rewrittenExperienceBullets": [
+    "Owned roadmap prioritization for AI workflow improvements; add [insert measurable result] to quantify customer or activation impact.",
+    "Collaborated with stakeholders on prompt-testing and launch planning; add [insert measurable result] where accurate."
+  ],
+  "rewrittenSkills": [
+    "Roadmap ownership",
+    "Stakeholder leadership",
+    "Prompt testing",
+    "Launch planning"
+  ],
+  "improvementNotes": [
+    "Add verified activation or conversion metrics to the most relevant experience bullet.",
+    "Only add missing tools from the job description if the candidate has actually used them."
+  ],
+  "warnings": [
+    "Metric placeholders must be replaced with truthful values before applying.",
+    "Do not add unsupported job requirements as skills."
+  ]
+}
+```
+
+### CV Rewrite Response Fields
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `rewrittenSummary` | string | yes | Truthful, job-tailored professional summary based only on CV evidence. |
+| `rewrittenExperienceBullets` | string[] | yes | Rewritten CV bullets using scope, action, tools/processes, and truthful results or placeholders. |
+| `rewrittenSkills` | string[] | yes | Skills supported by the CV and relevant to the job description. |
+| `improvementNotes` | string[] | yes | Actionable guidance on what to add, where to add it, and why it improves fit. |
+| `warnings` | string[] | yes | Truthfulness, missing evidence, unsupported requirement, and placeholder warnings. |
+
+Rewrite providers must never invent experience, fabricate metrics, or add unsupported tools. When measurable impact is missing, providers must use placeholders such as `[insert measurable result]`.
+
 ## Error Responses
 
 Return a non-2xx status with a JSON error payload:
@@ -211,7 +283,7 @@ The backend must:
 - Configure CORS for trusted Flutter Web origins.
 - Use TLS in production.
 
-The current repository backend validates requests and returns contract-compatible JSON through `AnalysisOrchestrator`. `MockProvider` is used when `AI_PROVIDER=mock`. `OpenAIProvider` is used only when `AI_PROVIDER=openai`, and `GeminiProvider` is used only when `AI_PROVIDER=gemini`. Provider keys are read from backend environment variables, and output validation stays inside `ResponseParser` and `ResultValidator`.
+The current repository backend validates requests and returns contract-compatible JSON through `AnalysisOrchestrator` and `CvRewriteOrchestrator`. `MockProvider` is used when `AI_PROVIDER=mock`. `OpenAIProvider` is used only when `AI_PROVIDER=openai`, and `GeminiProvider` is used only when `AI_PROVIDER=gemini`. Gemini and mock modes support `POST /rewrite-cv`; OpenAI rewrite support is intentionally not enabled yet. Provider keys are read from backend environment variables, and output validation stays inside parser and validator layers.
 
 ## Client Responsibilities
 
@@ -234,6 +306,20 @@ curl -X POST "https://api.example.com/v1/career-analysis" \
   -d '{
     "cvText": "Product discovery roadmap ownership prompt testing...",
     "cvFileName": "Derya_Kaya_CV.pdf",
+    "jobDescription": "We are hiring an AI product manager...",
+    "locale": "en-US",
+    "targetRole": "AI Product Manager"
+  }'
+```
+
+CV rewrite example:
+
+```sh
+curl -X POST "http://localhost:3001/rewrite-cv" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cvText": "Product discovery roadmap ownership prompt testing...",
     "jobDescription": "We are hiring an AI product manager...",
     "locale": "en-US",
     "targetRole": "AI Product Manager"

@@ -2,10 +2,11 @@
 
 A modern AI career assistant MVP built with Flutter and Material 3.
 
-## AI Analysis Backend
+## AI Backend
 
-CVMatch is prepared to call a career analysis backend, but it does not call
-OpenAI, Gemini, or other AI providers directly from Flutter and does not store API keys in the app.
+CVMatch is prepared to call a career analysis and CV rewrite backend, but it does
+not call OpenAI, Gemini, or other AI providers directly from Flutter and does not
+store API keys in the app.
 
 - If `CVMATCH_ANALYSIS_API_URL` is empty, the app uses `MockAnalysisService`.
 - If `CVMATCH_ANALYSIS_API_URL` is set, the app uses `ApiCareerAnalysisService`.
@@ -32,7 +33,13 @@ flutter run -d chrome --dart-define=CVMATCH_ANALYSIS_API_URL=http://localhost:30
 
 See `backend/README.md` for backend setup, validation, and API examples.
 
-The backend should accept a `POST` JSON body with:
+The analysis endpoint is:
+
+```http
+POST /analyze
+```
+
+It accepts a JSON body with:
 
 - `cvText`
 - `cvFileName`
@@ -50,6 +57,25 @@ The backend response should match `CvAnalysisResult`:
 - `suggestedImprovements`
 - `coverLetter`
 - `interviewQuestions`
+
+The CV rewrite endpoint is:
+
+```http
+POST /rewrite-cv
+```
+
+It accepts `cvText`, `jobDescription`, optional `targetRole`, and optional
+`locale`. It returns:
+
+- `rewrittenSummary`
+- `rewrittenExperienceBullets`
+- `rewrittenSkills`
+- `improvementNotes`
+- `warnings`
+
+Rewrite output must preserve the candidate's truthful background, never invent
+experience, and use placeholders such as `[insert measurable result]` when
+verified metrics are missing.
 
 Keep AI provider keys and provider logic on the backend only. Flutter should
 call your backend API, and the backend should handle authentication, rate

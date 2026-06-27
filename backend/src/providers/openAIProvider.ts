@@ -5,7 +5,12 @@ import { env } from "../config/env.js";
 import { CareerAnalysisException } from "../errors/careerAnalysisException.js";
 import { cvAnalysisResultSchema } from "../schemas/analysisSchemas.js";
 import { cvAnalysisJsonSchema } from "./cvAnalysisJsonSchema.js";
-import type { AIProvider, AnalysisPrompt, ProviderResponse } from "./provider.js";
+import type {
+  AIProvider,
+  AnalysisPrompt,
+  CvRewritePrompt,
+  ProviderResponse,
+} from "./provider.js";
 
 type OpenAIRequestOptions = {
   timeout?: number;
@@ -136,6 +141,10 @@ export class OpenAIProvider implements AIProvider {
     }
 
     throw lastError ?? new CareerAnalysisException(502, "OpenAI provider request failed.");
+  }
+
+  async generateCvRewrite(_prompt: CvRewritePrompt): Promise<ProviderResponse> {
+    throw new CareerAnalysisException(501, "OpenAI provider does not support CV rewrite yet.");
   }
 
   private client(): OpenAIChatClient {

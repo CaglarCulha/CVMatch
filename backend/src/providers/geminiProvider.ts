@@ -3,7 +3,13 @@ import { GoogleGenAI } from "@google/genai";
 import { env } from "../config/env.js";
 import { CareerAnalysisException } from "../errors/careerAnalysisException.js";
 import { cvAnalysisJsonSchema } from "./cvAnalysisJsonSchema.js";
-import type { AIProvider, AnalysisPrompt, ProviderResponse } from "./provider.js";
+import { cvRewriteJsonSchema } from "./cvRewriteJsonSchema.js";
+import type {
+  AIProvider,
+  AnalysisPrompt,
+  CvRewritePrompt,
+  ProviderResponse,
+} from "./provider.js";
 
 type GeminiGenerateContentBody = {
   model: string;
@@ -12,7 +18,7 @@ type GeminiGenerateContentBody = {
     systemInstruction: string;
     temperature: number;
     responseMimeType: "application/json";
-    responseJsonSchema: typeof cvAnalysisJsonSchema;
+    responseJsonSchema: typeof cvAnalysisJsonSchema | typeof cvRewriteJsonSchema;
     httpOptions: {
       timeout: number;
     };
@@ -72,6 +78,16 @@ export class GeminiProvider implements AIProvider {
   }
 
   async generateAnalysis(prompt: AnalysisPrompt): Promise<ProviderResponse> {
+    return this.generate(prompt);
+  }
+
+  async generateCvRewrite(prompt: CvRewritePrompt): Promise<ProviderResponse> {
+    return this.generate(prompt);
+  }
+
+  private async generate(
+    prompt: AnalysisPrompt | CvRewritePrompt,
+  ): Promise<ProviderResponse> {
     const client = this.client();
     const startedAt = Date.now();
     let lastError: CareerAnalysisException | undefined;
@@ -130,7 +146,7 @@ export class GeminiProvider implements AIProvider {
   }
 
   private requestBody(
-    prompt: AnalysisPrompt,
+    prompt: AnalysisPrompt | CvRewritePrompt,
     timeoutMs: number,
   ): GeminiGenerateContentBody {
     return {
@@ -140,13 +156,19 @@ export class GeminiProvider implements AIProvider {
         systemInstruction: prompt.system,
         temperature: 0.2,
         responseMimeType: "application/json",
-        responseJsonSchema: cvAnalysisJsonSchema,
+        responseJsonSchema: schemaFor(prompt),
         httpOptions: {
           timeout: timeoutMs,
         },
       },
     };
   }
+}
+
+function schemaFor(prompt: AnalysisPrompt | CvRewritePrompt) {
+  return prompt.responseFormat === "CvRewriteResultJson"
+    ? cvRewriteJsonSchema
+    : cvAnalysisJsonSchema;
 }
 
 function outputText(response: GeminiGenerateContentResponse): string {
@@ -172,8 +194,6 @@ function outputText(response: GeminiGenerateContentResponse): string {
 }
 
 function toCareerAnalysisException(error: unknown): CareerAnalysisException {
-  console.error("Gemini API raw error:", error);
-
   if (error instanceof CareerAnalysisException) {
     return error;
   }
@@ -218,8 +238,7 @@ function toCareerAnalysisException(error: unknown): CareerAnalysisException {
     );
   }
 
-  const message = error instanceof Error ? error.message : String(error);
-  return new CareerAnalysisException(502, `Gemini provider request failed: ${message}`);
+  return new CareerAnalysisException(502, "Gemini provider request failed.");
 }
 
 function isBlockedFinishReason(finishReason: string | undefined): boolean {

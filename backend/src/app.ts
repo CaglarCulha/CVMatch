@@ -6,19 +6,30 @@ import { corsOptions } from "./config/cors.js";
 import { env } from "./config/env.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { notFound } from "./middleware/notFound.js";
-import { AnalysisOrchestrator, ProviderFactory } from "./providers/index.js";
+import {
+  AnalysisOrchestrator,
+  CvRewriteOrchestrator,
+  ProviderFactory,
+} from "./providers/index.js";
 import { createAnalyzeRouter } from "./routes/analyze.js";
+import { createRewriteCvRouter } from "./routes/rewriteCv.js";
 import type { CareerAnalysisService } from "./types/analysis.js";
+import type { CvRewriteService } from "./types/rewrite.js";
 
 type CreateAppOptions = {
   analysisService?: CareerAnalysisService;
+  rewriteService?: CvRewriteService;
 };
 
 export function createApp(options: CreateAppOptions = {}) {
   const app = express();
+  const provider = ProviderFactory.create();
   const analysisService =
     options.analysisService ??
-    new AnalysisOrchestrator({ provider: ProviderFactory.create() });
+    new AnalysisOrchestrator({ provider });
+  const rewriteService =
+    options.rewriteService ??
+    new CvRewriteOrchestrator({ provider });
 
   app.disable("x-powered-by");
   app.use(helmet());
@@ -34,6 +45,7 @@ export function createApp(options: CreateAppOptions = {}) {
   });
 
   app.use(createAnalyzeRouter(analysisService));
+  app.use(createRewriteCvRouter(rewriteService));
   app.use(notFound);
   app.use(errorHandler);
 
