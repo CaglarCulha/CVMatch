@@ -26,6 +26,7 @@ CVMatch is a Flutter application organized by feature with clear presentation, d
 - Helmet for default HTTP security headers.
 - CORS configured by environment for Flutter Web origins.
 - dotenv for local environment loading.
+- Official OpenAI Node SDK and Google Gen AI SDK for backend-only provider integrations.
 
 ## Application Entry
 
@@ -217,6 +218,7 @@ Key components:
 - `AIProvider`: provider interface for OpenAI, Anthropic, Gemini, Ollama, or local providers.
 - `MockProvider`: deterministic default provider for local development and tests.
 - `OpenAIProvider`: official OpenAI Node SDK provider selected only when `AI_PROVIDER=openai`.
+- `GeminiProvider`: official Google Gen AI SDK provider selected only when `AI_PROVIDER=gemini`.
 - `ProviderFactory`: selects the provider from backend configuration.
 - `AnalysisOrchestrator`: business-flow coordinator used by the route.
 - `PromptBuilder`: builds prompts using templates from `providers/templates/`.
@@ -226,6 +228,17 @@ Key components:
 Adding a provider should not require route or orchestration changes. Implement `AIProvider`, add the provider to `ProviderFactory`, keep credentials server-side, and add provider-specific tests.
 
 `OpenAIProvider` reads `OPENAI_API_KEY` and `OPENAI_MODEL` from backend environment variables, uses structured JSON output, applies a backend request timeout, and sends provider output through the existing `ResponseParser` and `ResultValidator` pipeline. The default model is `gpt-4.1-mini`.
+
+`GeminiProvider` reads `GEMINI_API_KEY` and `GEMINI_MODEL` from backend environment variables, uses structured JSON output with the same `CvAnalysisResult` JSON schema, applies a backend request timeout, and sends provider output through the existing `ResponseParser` and `ResultValidator` pipeline. The default model is `gemini-2.5-flash`.
+
+Provider prompts and schemas enforce recruiter-grade analysis quality across OpenAI, Gemini, and future providers:
+
+- Match scores must be strict, evidence-based, and penalize missing required experience, tools, quotas, KPIs, leadership, and industry context.
+- ATS scores are evaluated separately from match scores and reflect parsing quality, section clarity, keyword alignment, and recruiter readability.
+- Missing keywords should be role-specific rather than generic; examples include CRM, Salesforce, SAP, quota ownership, pipeline management, technical sales, and stakeholder management.
+- Strengths must be supported by CV evidence, weaknesses must explain missing proof, and improvements must state what to change, where to add it, why it matters, and example wording when possible.
+- Optional recruiter reasoning fields such as `mainReasonsForScore`, `confidenceLevel`, `recruiterVerdict`, `rejectionRisks`, and `fastestFixes` are backward-compatible additions to the backend response contract.
+- User-provided CV text and job descriptions are wrapped as untrusted content so provider prompts can explicitly ignore embedded prompt-injection attempts.
 
 ## Configuration
 

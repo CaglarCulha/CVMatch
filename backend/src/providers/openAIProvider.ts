@@ -69,6 +69,11 @@ const openAIAnalysisResultSchema = cvAnalysisResultSchema.extend({
   weaknesses: z.array(z.string().min(1)).min(1).max(20),
   improvements: z.array(z.string().min(1)).min(1).max(20),
   rewrittenSummary: z.string().min(1).max(2_000),
+  mainReasonsForScore: z.array(z.string().min(1)).min(1).max(8),
+  confidenceLevel: z.enum(["low", "medium", "high"]),
+  recruiterVerdict: z.string().min(1).max(1_200),
+  rejectionRisks: z.array(z.string().min(1)).length(3),
+  fastestFixes: z.array(z.string().min(1)).length(3),
 });
 
 export class OpenAIProvider implements AIProvider {

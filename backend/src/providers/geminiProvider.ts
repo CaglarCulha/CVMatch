@@ -172,6 +172,8 @@ function outputText(response: GeminiGenerateContentResponse): string {
 }
 
 function toCareerAnalysisException(error: unknown): CareerAnalysisException {
+  console.error("Gemini API raw error:", error);
+
   if (error instanceof CareerAnalysisException) {
     return error;
   }
@@ -216,7 +218,8 @@ function toCareerAnalysisException(error: unknown): CareerAnalysisException {
     );
   }
 
-  return new CareerAnalysisException(502, "Gemini provider request failed.");
+  const message = error instanceof Error ? error.message : String(error);
+  return new CareerAnalysisException(502, `Gemini provider request failed: ${message}`);
 }
 
 function isBlockedFinishReason(finishReason: string | undefined): boolean {

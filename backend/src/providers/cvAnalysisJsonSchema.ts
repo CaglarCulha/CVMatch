@@ -53,6 +53,42 @@ export const cvAnalysisJsonSchema = {
       maxLength: 2000,
       description: "A concise rewritten professional summary tailored to the job.",
     },
+    mainReasonsForScore: {
+      type: "array",
+      minItems: 1,
+      maxItems: 8,
+      items: { type: "string", minLength: 1 },
+      description:
+        "The main evidence-based reasons behind the match score, including penalties for missing required experience.",
+    },
+    confidenceLevel: {
+      type: "string",
+      enum: ["low", "medium", "high"],
+      description:
+        "Confidence in the analysis based on CV text quality and amount of direct evidence.",
+    },
+    recruiterVerdict: {
+      type: "string",
+      minLength: 1,
+      maxLength: 1200,
+      description:
+        "A brutally honest recruiter-style verdict about whether the candidate is likely to be shortlisted.",
+    },
+    rejectionRisks: {
+      type: "array",
+      minItems: 3,
+      maxItems: 3,
+      items: { type: "string", minLength: 1 },
+      description: "The top three evidence-based risks that could cause rejection.",
+    },
+    fastestFixes: {
+      type: "array",
+      minItems: 3,
+      maxItems: 3,
+      items: { type: "string", minLength: 1 },
+      description:
+        "The top three fastest CV edits that would improve job fit without inventing experience.",
+    },
     strongPoints: {
       type: "array",
       minItems: 1,
@@ -97,6 +133,11 @@ export const cvAnalysisJsonSchema = {
     "weaknesses",
     "improvements",
     "rewrittenSummary",
+    "mainReasonsForScore",
+    "confidenceLevel",
+    "recruiterVerdict",
+    "rejectionRisks",
+    "fastestFixes",
     "strongPoints",
     "weakPoints",
     "suggestedImprovements",

@@ -82,9 +82,35 @@ Return `200 OK` with JSON matching `CvAnalysisResult`:
 {
   "matchScore": 78,
   "atsScore": 74,
+  "keywordCoverage": 68,
   "missingKeywords": [
     "Activation metrics",
     "Experiment design"
+  ],
+  "strengths": [
+    "Roadmap ownership is supported by the CV and matters because the role requires product prioritization."
+  ],
+  "weaknesses": [
+    "The CV does not quantify activation or retention outcomes."
+  ],
+  "improvements": [
+    "Add one Product Experience bullet with the metric, product area, and business outcome. Example: Improved activation by [insert verified metric] through onboarding experiments."
+  ],
+  "rewrittenSummary": "AI product manager with evidence of roadmap ownership, stakeholder leadership, and prompt-testing workflows. Add verified activation or conversion metrics to strengthen fit for this role.",
+  "mainReasonsForScore": [
+    "Core product ownership is evidenced, but required activation metrics are underdeveloped."
+  ],
+  "confidenceLevel": "medium",
+  "recruiterVerdict": "Worth a recruiter screen if the candidate can add quantified product outcomes before applying.",
+  "rejectionRisks": [
+    "The CV does not prove activation impact.",
+    "Experiment design evidence is thin.",
+    "The strongest AI workflow evidence may be too buried."
+  ],
+  "fastestFixes": [
+    "Move AI workflow evidence into the summary.",
+    "Add one quantified activation or conversion bullet.",
+    "Mirror the job's experiment-design language where truthful."
   ],
   "strongPoints": [
     "The CV demonstrates roadmap ownership and stakeholder leadership."
@@ -116,6 +142,23 @@ Return `200 OK` with JSON matching `CvAnalysisResult`:
 | `interviewQuestions` | string[] | yes | Suggested preparation questions. |
 
 The Flutter parser accepts numeric strings for scores but backend responses should send JSON numbers.
+
+### Recruiter Reasoning Fields
+
+The backend may return additional backward-compatible fields for richer recruiter-level analysis. Current Flutter builds ignore unknown fields until the UI is extended.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `keywordCoverage` | integer | no | Estimated coverage of important role-specific keywords and evidence, expected 0-100. |
+| `strengths` | string[] | no | Modern alias for evidence-backed strengths; content should match or expand `strongPoints`. |
+| `weaknesses` | string[] | no | Modern alias for evidence-backed risks; content should match or expand `weakPoints`. |
+| `improvements` | string[] | no | Modern alias for actionable recommendations; content should match or expand `suggestedImprovements`. |
+| `rewrittenSummary` | string | no | Tailored professional summary using only evidence from the CV. |
+| `mainReasonsForScore` | string[] | no | Main evidence-based reasons for the match score. |
+| `confidenceLevel` | string | no | Analysis confidence: `low`, `medium`, or `high`. |
+| `recruiterVerdict` | string | no | Concise recruiter-style hiring-readiness verdict. |
+| `rejectionRisks` | string[] | no | Top three reasons the application may be rejected. |
+| `fastestFixes` | string[] | no | Top three fastest truthful changes to improve fit. |
 
 ## Error Responses
 
@@ -168,7 +211,7 @@ The backend must:
 - Configure CORS for trusted Flutter Web origins.
 - Use TLS in production.
 
-The current repository backend validates requests and returns contract-compatible JSON through `AnalysisOrchestrator`. `MockProvider` is used when `AI_PROVIDER=mock`. `OpenAIProvider` is used only when `AI_PROVIDER=openai`, reads its key from backend environment variables, and keeps output validation inside `ResponseParser` and `ResultValidator`.
+The current repository backend validates requests and returns contract-compatible JSON through `AnalysisOrchestrator`. `MockProvider` is used when `AI_PROVIDER=mock`. `OpenAIProvider` is used only when `AI_PROVIDER=openai`, and `GeminiProvider` is used only when `AI_PROVIDER=gemini`. Provider keys are read from backend environment variables, and output validation stays inside `ResponseParser` and `ResultValidator`.
 
 ## Client Responsibilities
 

@@ -5,7 +5,7 @@ A modern AI career assistant MVP built with Flutter and Material 3.
 ## AI Analysis Backend
 
 CVMatch is prepared to call a career analysis backend, but it does not call
-OpenAI directly from Flutter and does not store API keys in the app.
+OpenAI, Gemini, or other AI providers directly from Flutter and does not store API keys in the app.
 
 - If `CVMATCH_ANALYSIS_API_URL` is empty, the app uses `MockAnalysisService`.
 - If `CVMATCH_ANALYSIS_API_URL` is set, the app uses `ApiCareerAnalysisService`.
@@ -51,9 +51,9 @@ The backend response should match `CvAnalysisResult`:
 - `coverLetter`
 - `interviewQuestions`
 
-Keep OpenAI keys and provider logic on the backend only. Flutter should call
-your backend API, and the backend should handle authentication, rate limiting,
-AI provider calls, and response validation.
+Keep AI provider keys and provider logic on the backend only. Flutter should
+call your backend API, and the backend should handle authentication, rate
+limiting, AI provider calls, and response validation.
 
 ## Getting Started
 

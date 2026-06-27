@@ -120,6 +120,8 @@ Current providers:
 - `OpenAIProvider`: official OpenAI Node SDK provider, selected only when `AI_PROVIDER=openai`.
 - `GeminiProvider`: official Google Gen AI SDK provider, selected only when `AI_PROVIDER=gemini`.
 
+All providers are expected to behave like strict recruiter-level analysis engines, not generic keyword checkers. Provider prompts require evidence-based scoring, separate match and ATS evaluation, role-specific missing keywords, actionable recommendations, and prompt-injection resistance. Mock mode mirrors the same product posture with deterministic keyword-overlap heuristics for safe local development.
+
 OpenAI provider behavior:
 
 - Reads `OPENAI_API_KEY` from backend environment variables only.
@@ -178,6 +180,16 @@ Successful response:
 {
   "matchScore": 78,
   "atsScore": 74,
+  "keywordCoverage": 68,
+  "strengths": ["Roadmap ownership appears in the CV and matters because the role requires product prioritization."],
+  "weaknesses": ["Missing quantified activation or retention outcomes."],
+  "improvements": ["Add one Product Experience bullet with the metric, product area, and business outcome."],
+  "rewrittenSummary": "AI product manager with evidence of roadmap ownership and prompt-testing workflows. Add verified activation or conversion metrics to strengthen fit.",
+  "mainReasonsForScore": ["Core product ownership is evidenced, but activation metrics are underdeveloped."],
+  "confidenceLevel": "medium",
+  "recruiterVerdict": "Worth a recruiter screen if the candidate adds quantified product outcomes before applying.",
+  "rejectionRisks": ["Missing quantified impact.", "Experiment design evidence is thin.", "AI workflow evidence may be buried."],
+  "fastestFixes": ["Move AI workflow evidence into the summary.", "Add one quantified activation bullet.", "Mirror experiment-design language where truthful."],
   "missingKeywords": ["Activation metrics"],
   "strongPoints": ["Roadmap ownership appears in both the CV and job description."],
   "weakPoints": ["Missing or underrepresented role signals: Activation metrics."],
@@ -210,3 +222,4 @@ Validation errors return:
 - Request validation errors do not echo `cvText` or `jobDescription`.
 - The backend does not persist CV text, job descriptions, or analysis results.
 - Keep AI-provider integration server-side only.
+- Provider prompts delimit CV text and job descriptions as untrusted data and instruct models to ignore embedded instructions that attempt to override system rules, leak prompts, or force inflated scores.

@@ -11,6 +11,8 @@ This changelog follows the spirit of Keep a Changelog and uses the app version f
 - Backend validation with Zod for analysis requests and `CvAnalysisResult` responses.
 - Extensible backend AI provider architecture with `AIProvider`, `MockProvider`, `OpenAIProvider`, `ProviderFactory`, `AnalysisOrchestrator`, `PromptBuilder`, `ResponseParser`, and `ResultValidator`.
 - Real `OpenAIProvider` implementation using the official OpenAI Node SDK, structured JSON output, timeout handling, safe error mapping, and mocked tests.
+- Real `GeminiProvider` implementation using the official Google Gen AI SDK, structured JSON output, timeout handling, safe error mapping, and mocked tests.
+- Recruiter-grade backend analysis prompts, structured schema fields, strict mock scoring, role-specific missing keyword extraction, actionable improvement guidance, and optional recruiter reasoning fields.
 - Backend `.env.example` with server-side `OPENAI_API_KEY` configuration.
 - Backend README with local setup and Flutter connection instructions.
 - Flutter Material 3 MVP for CVMatch.

@@ -131,11 +131,15 @@ Backend contract tests should verify:
 - Response schema.
 - Timeout behavior.
 - Invalid provider output handling.
+- Recruiter-grade scoring behavior.
+- Prompt-injection resistant prompt construction.
+- No hallucinated skills in evidence-backed strengths or summaries.
+- Backward compatibility with the Flutter `CvAnalysisResult` fields.
 - Rate-limit and auth error payloads.
 - Redaction in backend logs.
 
 The repository backend includes `backend/test/analyze.test.ts` for the local `POST /analyze` contract and validation behavior.
-It also includes `backend/test/providerArchitecture.test.ts` for provider selection, OpenAI stub behavior, response parsing, and result validation.
+It also includes `backend/test/providerArchitecture.test.ts` for provider selection, OpenAI and Gemini stub behavior, response parsing, result validation, strict mock scoring, prompt-injection boundaries, no-hallucination checks, and Flutter response compatibility.
 
 ## CI Expectations
 

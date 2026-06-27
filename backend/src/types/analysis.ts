@@ -15,6 +15,11 @@ export type CvAnalysisResult = {
   weaknesses?: string[] | undefined;
   improvements?: string[] | undefined;
   rewrittenSummary?: string | undefined;
+  mainReasonsForScore?: string[] | undefined;
+  confidenceLevel?: "low" | "medium" | "high" | undefined;
+  recruiterVerdict?: string | undefined;
+  rejectionRisks?: string[] | undefined;
+  fastestFixes?: string[] | undefined;
   strongPoints: string[];
   weakPoints: string[];
   suggestedImprovements: string[];

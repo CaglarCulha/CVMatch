@@ -15,7 +15,7 @@ const keywordCatalog: KeywordGroup[] = [
     label: "Product discovery",
     terms: ["product discovery", "user research", "customer discovery", "research"],
   },
-  { label: "Roadmap ownership", terms: ["roadmap", "strategy", "prioritization", "ownership"] },
+  { label: "Roadmap ownership", terms: ["roadmap", "roadmap ownership", "prioritization"] },
   { label: "Activation metrics", terms: ["activation", "retention", "conversion", "metrics"] },
   { label: "Experiment design", terms: ["experiment", "hypothesis", "a/b", "ab test"] },
   {
@@ -29,9 +29,30 @@ const keywordCatalog: KeywordGroup[] = [
   { label: "API integration", terms: ["api", "integration", "webhook", "service"] },
   { label: "Security practices", terms: ["security", "privacy", "compliance", "encryption"] },
   { label: "Team management", terms: ["manager", "mentor", "hiring", "team"] },
+  { label: "CRM", terms: ["crm", "customer relationship management"] },
+  { label: "Salesforce", terms: ["salesforce"] },
+  { label: "SAP", terms: ["sap"] },
+  { label: "Quota ownership", terms: ["quota", "quota ownership", "quota attainment"] },
+  { label: "Pipeline management", terms: ["pipeline", "pipeline management"] },
+  { label: "Technical sales", terms: ["technical sales", "solutions selling", "pre-sales"] },
+  { label: "Negotiation", terms: ["negotiation", "negotiated", "commercial negotiation"] },
+  { label: "B2B sales", terms: ["b2b", "b2b sales", "enterprise sales"] },
 ];
 
 const cvSectionSignals = ["experience", "education", "skills", "projects", "summary"];
+const criticalEvidenceLabels = new Set([
+  "CRM",
+  "Salesforce",
+  "SAP",
+  "Quota ownership",
+  "Pipeline management",
+  "Technical sales",
+  "Negotiation",
+  "B2B sales",
+  "Activation metrics",
+  "Stakeholder leadership",
+  "Team management",
+]);
 
 export class MockProvider implements AIProvider {
   readonly name = "mock";
@@ -57,26 +78,54 @@ function buildMockResult(request: AnalyzeRequest): CvAnalysisResult {
   const sectionScore = cvSectionSignals.filter((signal) => cvText.includes(signal)).length;
   const overlapRatio = jobKeywords.length === 0 ? 0.35 : overlap.length / jobKeywords.length;
   const roleBoost = roleSignal(request.targetRole, cvText, jobDescription);
+  const criticalMissingCount = missingKeywords.filter((keyword) =>
+    criticalEvidenceLabels.has(keyword),
+  ).length;
   const matchScore = clamp(
-    Math.round(34 + overlapRatio * 42 + sectionScore * 3 + roleBoost),
-    28,
+    Math.round(
+      26 +
+        overlapRatio * 58 +
+        sectionScore * 2 +
+        roleBoost -
+        Math.min(missingKeywords.length * 2, 18) -
+        criticalMissingCount * 4,
+    ),
+    18,
     88,
   );
   const atsScore = clamp(
-    Math.round(matchScore - missingKeywords.length * 2 + sectionScore * 4),
-    30,
+    Math.round(42 + sectionScore * 7 + overlapRatio * 25 - missingKeywords.length - criticalMissingCount * 2),
+    25,
     88,
   );
   const roleLabel = request.targetRole?.trim() || inferRole(jobDescription);
   const strongest = overlap.slice(0, 3);
+  const strengths = strongPoints(strongest, sectionScore, roleLabel);
+  const weaknesses = weakPoints(missingKeywords, overlapRatio, cvText);
+  const improvements = suggestedImprovements(missingKeywords, roleLabel);
 
   return {
     matchScore,
     atsScore,
+    keywordCoverage: clamp(Math.round(overlapRatio * 100), 0, 100),
     missingKeywords,
-    strongPoints: strongPoints(strongest, sectionScore, roleLabel),
-    weakPoints: weakPoints(missingKeywords, overlapRatio),
-    suggestedImprovements: suggestedImprovements(missingKeywords, roleLabel),
+    strengths,
+    weaknesses,
+    improvements,
+    rewrittenSummary: rewrittenSummary(roleLabel, strongest, missingKeywords),
+    mainReasonsForScore: mainReasonsForScore(
+      overlap,
+      missingKeywords,
+      overlapRatio,
+      criticalMissingCount,
+    ),
+    confidenceLevel: confidenceLevel(sectionScore, jobKeywords.length),
+    recruiterVerdict: recruiterVerdict(matchScore, missingKeywords),
+    rejectionRisks: topThree(weaknesses),
+    fastestFixes: topThree(improvements),
+    strongPoints: strengths,
+    weakPoints: weaknesses,
+    suggestedImprovements: improvements,
     coverLetter: coverLetter(request.cvFileName, roleLabel, strongest, matchScore),
     interviewQuestions: interviewQuestions(roleLabel, missingKeywords, strongest),
   };
@@ -99,7 +148,7 @@ function missingKeywordList(
     (term) => !cvText.includes(term.toLowerCase()),
   );
 
-  return unique([...curatedMissing, ...inferredMissing.map(toTitleCase)]).slice(0, 8);
+  return unique([...curatedMissing, ...inferredMissing.map(toTitleCase)]).slice(0, 12);
 }
 
 function importantTerms(text: string): string[] {
@@ -109,12 +158,22 @@ function importantTerms(text: string): string[] {
     "also",
     "and",
     "are",
+    "business",
+    "candidate",
+    "company",
+    "customer",
+    "customers",
+    "description",
+    "experience",
     "for",
     "from",
     "has",
     "have",
     "into",
     "our",
+    "role",
+    "sales",
+    "skills",
     "the",
     "this",
     "that",
@@ -155,6 +214,7 @@ function roleSignal(targetRole: string | undefined, cvText: string, jobDescripti
 }
 
 function inferRole(jobDescription: string): string {
+  if (jobDescription.includes("sales")) return "Sales Role";
   if (jobDescription.includes("product")) return "Product Role";
   if (jobDescription.includes("engineer")) return "Engineering Role";
   if (jobDescription.includes("designer")) return "Design Role";
@@ -164,28 +224,40 @@ function inferRole(jobDescription: string): string {
 }
 
 function strongPoints(keywords: string[], sectionScore: number, roleLabel: string): string[] {
-  const points = keywords.map((keyword) => `${keyword} appears in both the CV and job description.`);
+  const points = keywords.map(
+    (keyword) =>
+      `${keyword} is evidenced in the CV and matters because the ${roleLabel} depends on this requirement.`,
+  );
 
   if (sectionScore >= 3) {
-    points.push("The CV includes recognizable sections that support ATS readability.");
+    points.push("The CV has recognizable sections, which makes recruiter screening and ATS parsing easier.");
   }
 
   if (points.length === 0) {
-    points.push(`The CV contains readable text, but alignment with the ${roleLabel} requirements is limited.`);
+    points.push(`The CV provides readable baseline career information, but job-specific evidence for the ${roleLabel} is limited.`);
   }
 
   return points.slice(0, 5);
 }
 
-function weakPoints(missingKeywords: string[], overlapRatio: number): string[] {
+function weakPoints(missingKeywords: string[], overlapRatio: number, cvText: string): string[] {
   const points: string[] = [];
 
   if (missingKeywords.length > 0) {
-    points.push(`Missing or underrepresented role signals: ${missingKeywords.slice(0, 4).join(", ")}.`);
+    points.push(`The CV does not provide clear evidence for role-critical requirements: ${missingKeywords.slice(0, 4).join(", ")}.`);
+  }
+
+  if (
+    cvText.includes("business development") &&
+    missingKeywords.some((keyword) => keyword === "Quota ownership" || keyword === "Pipeline management")
+  ) {
+    points.push(
+      "The CV mentions business development but does not show quota ownership, pipeline value, or conversion metrics.",
+    );
   }
 
   if (overlapRatio < 0.35) {
-    points.push("Keyword overlap is low, so the CV may need stronger role-specific framing.");
+    points.push("Keyword overlap is low, so a recruiter would likely see the CV as under-evidenced for this role.");
   }
 
   points.push("Mock AI provider result. Production AI providers are not enabled yet.");
@@ -195,13 +267,86 @@ function weakPoints(missingKeywords: string[], overlapRatio: number): string[] {
 
 function suggestedImprovements(missingKeywords: string[], roleLabel: string): string[] {
   return [
-    `Rewrite the professional summary around ${roleLabel} outcomes and measurable impact.`,
+    `Rewrite the professional summary for the ${roleLabel}: add a one-line positioning statement, place it at the top, and connect it to the job. Example: "${roleLabel} candidate with experience in [insert strongest truthful domain] and [insert measurable result if present]."`,
     missingKeywords.length > 0
-      ? `Add truthful evidence for priority keywords such as ${missingKeywords.slice(0, 3).join(", ")}.`
-      : "Add more quantified outcomes that connect responsibilities to business results.",
-    "Use bullet points that show scope, action, tooling, and result.",
-    "Keep keyword additions natural and only include skills or achievements that are accurate.",
+      ? `Add truthful evidence for ${missingKeywords.slice(0, 3).join(", ")} in the Experience or Skills section because these appear important to screening. Example wording: "Used [tool/process] to [action] resulting in [insert verified outcome]."`
+      : "Add quantified outcomes under Experience because recruiters need proof of impact. Example wording: \"Improved [metric] by [insert verified percentage or amount].\"",
+    "Rewrite bullets using scope, action, tooling, and result so recruiters can verify fit quickly. Example: \"Managed [scope] using [tool/process] to achieve [verified result].\"",
+    "Remove or avoid unsupported keyword stuffing; only add skills or achievements that are accurate and can be defended in an interview.",
   ];
+}
+
+function rewrittenSummary(
+  roleLabel: string,
+  strongestKeywords: string[],
+  missingKeywords: string[],
+): string {
+  const evidence =
+    strongestKeywords.length > 0
+      ? strongestKeywords.join(", ")
+      : "[insert strongest CV-supported experience]";
+  const gap =
+    missingKeywords.length > 0
+      ? ` Add truthful evidence for ${missingKeywords.slice(0, 2).join(" and ")} if you have it.`
+      : "";
+
+  return `${roleLabel} candidate with CV-supported experience in ${evidence}. Focused on practical outcomes and cross-functional execution; include metrics such as [insert monthly volume], [insert quota attainment], or [insert KPI improvement] only if these facts are present in the CV.${gap}`;
+}
+
+function mainReasonsForScore(
+  overlap: string[],
+  missingKeywords: string[],
+  overlapRatio: number,
+  criticalMissingCount: number,
+): string[] {
+  const reasons = [
+    overlap.length > 0
+      ? `Supported alignment exists for ${overlap.slice(0, 3).join(", ")}.`
+      : "The CV has little direct evidence for the role-specific requirements.",
+    missingKeywords.length > 0
+      ? `The score is penalized for missing evidence around ${missingKeywords.slice(0, 4).join(", ")}.`
+      : "The CV covers most detected role-specific requirements.",
+    `Keyword coverage is approximately ${Math.round(overlapRatio * 100)}%, but match score is based on evidence quality rather than keywords alone.`,
+  ];
+
+  if (criticalMissingCount > 0) {
+    reasons.push("Several missing items appear to be recruiter-critical rather than cosmetic keyword gaps.");
+  }
+
+  return reasons;
+}
+
+function confidenceLevel(
+  sectionScore: number,
+  jobKeywordCount: number,
+): "low" | "medium" | "high" {
+  if (sectionScore < 2 || jobKeywordCount < 3) return "low";
+  if (sectionScore < 4) return "medium";
+
+  return "high";
+}
+
+function recruiterVerdict(matchScore: number, missingKeywords: string[]): string {
+  if (matchScore >= 75) {
+    return "Likely worth recruiter review, but the CV should still make the strongest evidence easier to find.";
+  }
+
+  if (matchScore >= 55) {
+    return "Borderline. A recruiter may continue only if the missing requirements are not mandatory.";
+  }
+
+  return `Unlikely to be shortlisted without stronger evidence for ${missingKeywords.slice(0, 3).join(", ") || "the core job requirements"}.`;
+}
+
+function topThree(items: string[]): string[] {
+  const fallback = "Add more concrete, CV-supported evidence for the target role.";
+  const uniqueItems = unique(items).slice(0, 3);
+
+  while (uniqueItems.length < 3) {
+    uniqueItems.push(fallback);
+  }
+
+  return uniqueItems;
 }
 
 function coverLetter(

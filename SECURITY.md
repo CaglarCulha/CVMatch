@@ -7,7 +7,7 @@ CVMatch handles CVs and job descriptions, which can contain names, contact detai
 ## Core Rules
 
 - Do not store OpenAI or provider API keys in Flutter.
-- Do not call OpenAI directly from Flutter.
+- Do not call OpenAI, Gemini, or other AI providers directly from Flutter.
 - Do not display full local file paths, raw PDF bytes, data URIs, base64 content, or full extracted CV text in normal UI.
 - Do not persist raw CV text or uploaded PDF bytes in the client.
 - Do not log CV text, full job descriptions, file paths, prompts, or provider responses.
@@ -86,9 +86,13 @@ The repository backend foundation in `backend/` currently:
 - Avoids echoing sensitive request content in validation errors.
 - Uses `MockProvider` when `AI_PROVIDER=mock`.
 - Uses `OpenAIProvider` only when `AI_PROVIDER=openai`.
+- Uses `GeminiProvider` only when `AI_PROVIDER=gemini`.
 - Reads `OPENAI_API_KEY` from backend environment variables only.
+- Reads `GEMINI_API_KEY` from backend environment variables only.
 - Uses the official OpenAI Node SDK server-side.
-- Keeps OpenAI outputs inside the existing parser and validator pipeline.
+- Uses the official Google Gen AI SDK server-side.
+- Keeps provider outputs inside the existing parser and validator pipeline.
+- Wraps CV text and job descriptions as untrusted prompt sections before provider calls.
 - Maps provider failures to safe errors without logging CV text, job descriptions, prompts, provider response bodies, or keys.
 
 ## AI Provider Safety
@@ -98,6 +102,8 @@ The backend should:
 - Treat CV and job descriptions as untrusted input.
 - Prevent prompt injection from causing secret disclosure or policy bypass.
 - Use system prompts that forbid revealing hidden instructions.
+- Delimit user-provided CV and job description content separately from system and developer instructions.
+- Instruct providers to ignore any embedded request to change scoring rules, leak prompts, disclose keys, or override the JSON schema.
 - Validate model output against `CvAnalysisResult` before responding.
 - Bound scores to expected ranges.
 - Avoid making employment guarantees.
